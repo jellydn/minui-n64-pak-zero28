@@ -18,7 +18,7 @@ mkdir -p "$SAVES_PATH/$EMU_TAG"
 ORIG_SPEAKER_MUTE=$(cat /sys/class/speaker/mute 2>/dev/null)
 ORIG_VFS_CACHE=$(cat /proc/sys/vm/vfs_cache_pressure 2>/dev/null)
 case "$PLATFORM" in
-    tg5040)
+    tg5040|zero28)
         ORIG_CPU1=$(cat /sys/devices/system/cpu/cpu1/online 2>/dev/null)
         ORIG_CPU2=$(cat /sys/devices/system/cpu/cpu2/online 2>/dev/null)
         ORIG_CPU3=$(cat /sys/devices/system/cpu/cpu3/online 2>/dev/null)
@@ -39,7 +39,7 @@ esac
 # CPU governor and frequency may be changed at runtime by the emulator (overlay
 # menu CPU Mode). Original values are saved above and restored on exit.
 case "$PLATFORM" in
-    tg5040)
+    tg5040|zero28)
         # Bring all cores online (single cluster: cpu0-3 Cortex-A53)
         echo 1 >/sys/devices/system/cpu/cpu1/online 2>/dev/null
         echo 1 >/sys/devices/system/cpu/cpu2/online 2>/dev/null
@@ -76,7 +76,7 @@ USERDATA_DIR="$USERDATA_PATH/$EMU_TAG-mupen64plus"
 # can be removed afterwards.
 LEGACY_USERDATA_DIR="$SHARED_USERDATA_PATH/N64-mupen64plus"
 case "$PLATFORM" in
-    tg5040)
+    tg5040|zero28)
         if [ "$DEVICE" = "brick" ]; then
             DEVICE_CONFIG_DIR="$USERDATA_DIR/brick"
             DEVICE_RESOLUTION="1024x768"
@@ -366,7 +366,7 @@ sleep 4
 
 # ── Thread pinning (platform-specific CPU topology) ──────────────────────────
 case "$PLATFORM" in
-    tg5040)
+    tg5040|zero28)
         # cpu0-3 are all Cortex-A53 @ 2000 MHz
         MAIN_MASK=1     # cpu0
         HELPER_MASK=0xc # cpu2-3
