@@ -8,6 +8,14 @@ rm -f "$LOGS_PATH/$EMU_TAG.txt"
 exec >>"$LOGS_PATH/$EMU_TAG.txt"
 exec 2>&1
 
+# Safe defaults for unset MinUI vars
+: "${LOGS_PATH:=/tmp}"
+: "${SDCARD_PATH:=/mnt/SDCARD}"
+: "${USERDATA_PATH:=$SDCARD_PATH/.userdata/${PLATFORM:-default}}"
+: "${SHARED_USERDATA_PATH:=$SDCARD_PATH/.userdata/shared}"
+: "${SAVES_PATH:=$SDCARD_PATH/Saves}"
+: "${PLATFORM:=tg5040}"
+
 # Normalize zero28 to tg5040 (same A133P SoC, same binaries)
 if [ "$PLATFORM" = "zero28" ]; then
     N64_PLATFORM="tg5040"
@@ -62,6 +70,10 @@ esac
 
 # ── Memory management: swap + VM tuning for hi-res texture loading ────────────
 SWAPFILE="/mnt/UDISK/n64_swap"
+# Fallback for zero28/Moss where UDISK may be elsewhere
+if [ ! -d "/mnt/UDISK" ] && [ -d "$USERDATA_PATH" ]; then
+    SWAPFILE="$USERDATA_PATH/n64_swap"
+fi
 if [ ! -f "$SWAPFILE" ]; then
     dd if=/dev/zero of="$SWAPFILE" bs=1M count=512 2>/dev/null
     mkswap "$SWAPFILE" 2>/dev/null
