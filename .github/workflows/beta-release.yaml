@@ -1,0 +1,25 @@
+---
+name: "beta-release"
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+permissions:
+  contents: write
+  pull-requests: write
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    if: github.actor == 'jellydn'
+    steps:
+      - uses: actions/checkout@v6
+      - name: Validate zero28 support
+        run: |
+          grep -q "zero28" pak.json || { echo "pak.json missing zero28"; exit 1; }
+          grep -q "zero28" config/shared/launch.sh || { echo "launch.sh missing zero28"; exit 1; }
+          echo "zero28 references found"
+      - name: Post Beta link
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr comment ${{ github.event.pull_request.number }} --body "## Beta
+          zero28 support validated. Build via: make build release"

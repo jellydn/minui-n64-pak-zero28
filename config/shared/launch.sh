@@ -8,7 +8,22 @@ rm -f "$LOGS_PATH/$EMU_TAG.txt"
 exec >>"$LOGS_PATH/$EMU_TAG.txt"
 exec 2>&1
 
-BIN_DIR="$PAK_DIR/$PLATFORM"
+# Safe defaults for unset MinUI vars
+: "${LOGS_PATH:=/tmp}"
+: "${SDCARD_PATH:=/mnt/SDCARD}"
+: "${USERDATA_PATH:=$SDCARD_PATH/.userdata/${PLATFORM:-default}}"
+: "${SHARED_USERDATA_PATH:=$SDCARD_PATH/.userdata/shared}"
+: "${SAVES_PATH:=$SDCARD_PATH/Saves}"
+: "${PLATFORM:=tg5040}"
+
+# Normalize zero28 to tg5040 (same A133P SoC, same binaries)
+if [ "$PLATFORM" = "zero28" ]; then
+    N64_PLATFORM="tg5040"
+else
+    N64_PLATFORM="$PLATFORM"
+fi
+
+BIN_DIR="$PAK_DIR/$N64_PLATFORM"
 ROM="$1"
 ROM_BASE="$(basename "$ROM")"
 
@@ -18,7 +33,7 @@ mkdir -p "$SAVES_PATH/$EMU_TAG"
 ORIG_SPEAKER_MUTE=$(cat /sys/class/speaker/mute 2>/dev/null)
 ORIG_VFS_CACHE=$(cat /proc/sys/vm/vfs_cache_pressure 2>/dev/null)
 case "$PLATFORM" in
-    tg5040)
+    tg5040|zero28)
         ORIG_CPU1=$(cat /sys/devices/system/cpu/cpu1/online 2>/dev/null)
         ORIG_CPU2=$(cat /sys/devices/system/cpu/cpu2/online 2>/dev/null)
         ORIG_CPU3=$(cat /sys/devices/system/cpu/cpu3/online 2>/dev/null)
@@ -39,7 +54,7 @@ esac
 # CPU governor and frequency may be changed at runtime by the emulator (overlay
 # menu CPU Mode). Original values are saved above and restored on exit.
 case "$PLATFORM" in
-    tg5040)
+    tg5040|zero28)
         # Bring all cores online (single cluster: cpu0-3 Cortex-A53)
         echo 1 >/sys/devices/system/cpu/cpu1/online 2>/dev/null
         echo 1 >/sys/devices/system/cpu/cpu2/online 2>/dev/null
@@ -55,6 +70,10 @@ esac
 
 # ── Memory management: swap + VM tuning for hi-res texture loading ────────────
 SWAPFILE="/mnt/UDISK/n64_swap"
+# Fallback for zero28/Moss where UDISK may be elsewhere
+if [ ! -d "/mnt/UDISK" ] && [ -d "$USERDATA_PATH" ]; then
+    SWAPFILE="$USERDATA_PATH/n64_swap"
+fi
 if [ ! -f "$SWAPFILE" ]; then
     dd if=/dev/zero of="$SWAPFILE" bs=1M count=512 2>/dev/null
     mkswap "$SWAPFILE" 2>/dev/null
@@ -76,11 +95,15 @@ USERDATA_DIR="$USERDATA_PATH/$EMU_TAG-mupen64plus"
 # can be removed afterwards.
 LEGACY_USERDATA_DIR="$SHARED_USERDATA_PATH/N64-mupen64plus"
 case "$PLATFORM" in
-    tg5040)
+    tg5040|zero28)
         if [ "$DEVICE" = "brick" ]; then
             DEVICE_CONFIG_DIR="$USERDATA_DIR/brick"
             DEVICE_RESOLUTION="1024x768"
             LEGACY_CONFIG_DIR="$LEGACY_USERDATA_DIR/config/tg5040-brick"
+        elif [ "$PLATFORM" = "zero28" ]; then
+            DEVICE_CONFIG_DIR="$USERDATA_DIR/zero28"
+            DEVICE_RESOLUTION="640x480"
+            LEGACY_CONFIG_DIR=""
         else
             DEVICE_CONFIG_DIR="$USERDATA_DIR/smart-pro"
             DEVICE_RESOLUTION="1280x720"
@@ -366,7 +389,7 @@ sleep 4
 
 # ── Thread pinning (platform-specific CPU topology) ──────────────────────────
 case "$PLATFORM" in
-    tg5040)
+    tg5040|zero28)
         # cpu0-3 are all Cortex-A53 @ 2000 MHz
         MAIN_MASK=1     # cpu0
         HELPER_MASK=0xc # cpu2-3
