@@ -8,7 +8,14 @@ rm -f "$LOGS_PATH/$EMU_TAG.txt"
 exec >>"$LOGS_PATH/$EMU_TAG.txt"
 exec 2>&1
 
-BIN_DIR="$PAK_DIR/$PLATFORM"
+# Normalize zero28 to tg5040 (same A133P SoC, same binaries)
+if [ "$PLATFORM" = "zero28" ]; then
+    N64_PLATFORM="tg5040"
+else
+    N64_PLATFORM="$PLATFORM"
+fi
+
+BIN_DIR="$PAK_DIR/$N64_PLATFORM"
 ROM="$1"
 ROM_BASE="$(basename "$ROM")"
 
